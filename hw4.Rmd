@@ -1,0 +1,98 @@
+---
+title: 'Homework #4'
+author: "Guang Yi Lim"
+date: "3/5/2018"
+output: html_document
+---
+---
+title: 'Homework #4'
+author: "Your Name"
+date: "3/1/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(datasets)
+library(dplyr)
+library(ggplot2)
+data <- ChickWeight
+```
+
+## Chick weights
+
+The `ChickWeight` data set is part of the base package `datasets`. See `?ChickWeight` for details on the data.
+For all of the questions use `dplyr` functions with the pipe `%>%` whenever possible.
+
+**Submission instructions**: Create a folder named `ds202_hw4`, and name the RMarkDown file including your solutions `hw4.Rmd` under this folder. For the submission, create a GitHub repository named `ds202_hw4` under your GitHub account, and push both `hw4.Rmd` and the knitted `hw4.html` before the deadline. I will assume you use the same GitHub username as for your HW3 submission. The latest version of your homework appearing on GitHub before the deadline is graded. *It is crucial to follow the exact folder structure and file names*, so that your homework can be reproduced and graded by an automated script. This homework is **due on March 7** before class.
+
+1. Get a frequency breakdown of the number of chicks, their average weight and the standard deviation of the weights in each of the diets at the start of the study. Store the resulting data frame in a variable named `weight0` and print.<br>
+<!-- 5 pts of extra credit: construct a ggplot that shows average weights by diet with an interval (shown as a line) of +- the standard deviation around the averages. -->
+```{r}
+weight0 <- data %>%
+  group_by(Diet) %>%
+  summarise(NumChicks = n()%/%12 ,average_weight = mean(weight),sd_weight = sd(weight))
+weight0
+```
+2. Each chick should have twelve weight measurements. Use the dplyr package to identify how many measurements are there for each chick. Extract a subset of the data for all chicks with complete information, name the data set `complete`, and print the first 3 rows. (Hint: you might want to use mutate to introduce a helper variable consisting of the number of observations)
+```{r}
+complete <- data %>% group_by(Chick) %>% mutate(Num = n()) %>% filter(Num ==12)
+head(complete, n=3)
+
+```
+3. In the complete data set introduce a new variable that measures the current weight difference compared to day 0. Name this variable weightgain and print the first 3 rows of the new data frame.
+```{r}
+complete <- complete %>%
+  group_by(Chick) %>%
+  mutate (weightGain = (weight - weight[Time ==0]))
+head(complete, n=3)
+``` 
+4. Use `{ggplot2}` to create side-by-side boxplots of `weightgain` by `Diet` for day 21. Describe the relationship in 2-3 sentences. Change the order of the categories in the Diet variable such that the boxplots are ordered by median `weightgain`, and the lower limit of the y axis should be 0.
+```{r}
+day21 <- filter(complete, Time ==21)
+p1 <- temp <- ggplot(day21,aes(x = reorder(Diet,weightGain,FUN = median),y =weightGain))+geom_boxplot() + expand_limits(y=0) +  xlab("Diet") +ylab("Weight Gain")+ ggtitle("Weight Gain by day 21 ")
+p1 <- p1 + theme(plot.title = element_text(hjust=0.5))
+
+```
+5. Answer the following question using numerical and graphical summary: Which chick gained the most weight and which gained the least weight? What diets were they on?
+```{r}
+most <- day21 %>% arrange(desc(weightGain))
+head(most,n=1)
+tail(most,n=1)
+
+ggplot(most,aes(x = Chick,y =weightGain)) +geom_point()+xlab("Chick")+ylab("Weight Gain")+ggtitle("Weight Gain agaisnt Chick")
+
+```
+<br/> Chick35 gained the most weight. It was on diet 3.Chick24 gained the least weight, it was on diet 2.
+
+<br/>6. For the chicks with the least and the most weight at time 0, plot their growth trajectories over time. </br>
+5 pts of extra credit: Add to the plot the average growth trajectory for all chicks (calculated as the mean weight for each chick at each time). How do the trajectories compare?
+```{r}
+day0 <- complete %>% filter(Time ==0)%>% arrange(desc(weight))
+head(day0,n=1)
+tail(day0,n=1)
+
+temp1 <- complete %>% arrange(Time)
+p2 <-ggplot(complete %>% filter(Chick ==3 | Chick ==48)%>% arrange(Time),aes(x =Time,y =weight ,color =Chick))+geom_line() +ggtitle("Growth Trajectory for heaviest and lightest chick at day0")
+p2 <- p2 + theme(plot.title=element_text(hjust=0.5))
+p2
+
+p3 <-ggplot(complete%>% arrange(Time),aes(x =Time,y =weight ,color =Chick))+geom_line() +ggtitle("Growth Trajectory for all chicks")
+p3 <- p3 + theme(plot.title = element_text(hjust=0.5))
+p3
+
+```
+<br />7. What else do you find interesting in the dataset? Show your exploratory analysis.
+I was curious about the average growth trajectory for each diet. The graph shows that while Diet 1, 2 3 has constant growth, chicks on diet 4 has more growth until day 12, then their growth starts to drop off and are overtaken by chicks on Diet 3
+
+```{r}
+#average growth trajectory for each diet
+growth <- data %>%
+  group_by(Diet,Time) %>%
+  summarise(NumChicks = n()%/%12 ,average_weight = mean(weight),sd_weight = sd(weight))
+p4 <- ggplot(growth, aes(x = Time,y=average_weight,color = Diet)) +geom_line() + xlab("Time") +ylab("average weight") +ggtitle("average weight against Time")
+p4 <- theme(plot.title = element_text(hjust =0.5))
+p4
+```
+
+Note: your submission is supposed to be fully reproducible, i.e. the TA and I will 'knit' your submission in RStudio. 
